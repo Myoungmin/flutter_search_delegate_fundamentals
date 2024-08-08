@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final selectedIndexProvider = StateProvider<int>((ref) {
+  return 0;
+});
 
 class CustomSearchDelegate extends SearchDelegate<String> {
   final List<String> searchList = [
@@ -18,6 +24,11 @@ class CustomSearchDelegate extends SearchDelegate<String> {
     "Tomato",
     "Watermelon",
   ];
+
+  final FocusNode focusNode = FocusNode();
+  final WidgetRef ref;
+
+  CustomSearchDelegate({required this.ref});
 
   @override
   List<Widget> buildActions(BuildContext context) {
@@ -44,17 +55,8 @@ class CustomSearchDelegate extends SearchDelegate<String> {
     final List<String> searchResults = searchList
         .where((item) => item.toLowerCase().contains(query.toLowerCase()))
         .toList();
-    return ListView.builder(
-      itemCount: searchResults.length,
-      itemBuilder: (context, index) {
-        return ListTile(
-          title: Text(searchResults[index]),
-          onTap: () {
-            close(context, searchResults[index]);
-          },
-        );
-      },
-    );
+
+    return _buildList(context, searchResults);
   }
 
   @override
@@ -65,16 +67,41 @@ class CustomSearchDelegate extends SearchDelegate<String> {
             .where((item) => item.toLowerCase().contains(query.toLowerCase()))
             .toList();
 
-    return ListView.builder(
-      itemCount: suggestionList.length,
-      itemBuilder: (context, index) {
-        return ListTile(
-          title: Text(suggestionList[index]),
-          onTap: () {
-            query = suggestionList[index];
-          },
-        );
+    return _buildList(context, suggestionList);
+  }
+
+  Widget _buildList(BuildContext context, List<String> items) {
+    int selectedIndex = ref.watch(selectedIndexProvider);
+
+    return KeyboardListener(
+      focusNode: focusNode,
+      onKeyEvent: (event) {
+        if (event.physicalKey == PhysicalKeyboardKey.arrowDown) {
+          if (selectedIndex < items.length - 1) {
+            ref.read(selectedIndexProvider.notifier).state++;
+          }
+        } else if (event.physicalKey == PhysicalKeyboardKey.arrowUp) {
+          if (selectedIndex > 0) {
+            ref.read(selectedIndexProvider.notifier).state--;
+          }
+        }
       },
+      child: ListView.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(
+              items[index],
+              style: TextStyle(
+                color: selectedIndex == index ? Colors.blue : null,
+              ),
+            ),
+            onTap: () {
+              close(context, items[index]);
+            },
+          );
+        },
+      ),
     );
   }
 }
